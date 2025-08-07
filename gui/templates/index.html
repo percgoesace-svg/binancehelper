@@ -1,1 +1,61 @@
-<html><body><h1>RSI Bot Dashboard</h1></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RSI Bot Dashboard</title>
+    <style>
+        body { font-family: sans-serif; margin: 0; background: #fafafa; }
+        header { background: #4CAF50; color: white; padding: 1em; text-align: center; }
+        section { padding: 2em; }
+        table { width: 100%; border-collapse: collapse; margin-top: 2em; }
+        th, td { padding: 1em; border-bottom: 1px solid #ccc; text-align: center; }
+        .green { color: green; font-weight: bold; }
+        .red { color: red; font-weight: bold; }
+        .beige { color: #999966; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>RSI Bot Dashboard</h1>
+        <a href="/logout" style="color:white; text-decoration: underline;">Logout</a>
+    </header>
+    <section>
+        <h2>Coin Status</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Coin</th>
+                    <th>RSI</th>
+                    <th>EMA9</th>
+                    <th>EMA20</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Esimerkkidata (korvattavissa API-vastauksella) -->
+                <tr>
+                    <td>BTCUSDT</td>
+                    <td>42.5</td>
+                    <td>29800</td>
+                    <td>29500</td>
+                    <td class="green">BUY</td>
+                </tr>
+                <tr>
+                    <td>ETHUSDT</td>
+                    <td>64.3</td>
+                    <td>1850</td>
+                    <td>1830</td>
+                    <td class="beige">HOLD</td>
+                </tr>
+                <tr>
+                    <td>XRPUSDT</td>
+                    <td>72.1</td>
+                    <td>0.55</td>
+                    <td>0.54</td>
+                    <td class="red">SELL</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+</body>
+</html>
