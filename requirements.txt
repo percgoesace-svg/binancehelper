@@ -5,3 +5,4 @@ python-dotenv
 python-binance
 pandas
 numpy
+python-multipart
