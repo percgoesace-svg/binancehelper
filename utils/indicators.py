@@ -1,23 +1,22 @@
 # RSI and EMA indicator functions
-from binance.client import Client
-import os
+import pandas as pd
+import numpy as np
 
-# API-avaimet .env:stä tai Railwayn ympäristömuuttujista
-API_KEY = os.getenv("BINANCE_API_KEY")
-API_SECRET = os.getenv("BINANCE_API_SECRET")
+def calculate_rsi(prices, period=14):
+    prices = pd.Series(prices)
+    delta = prices.diff()
+    gain = delta.where(delta > 0, 0)
+    loss = -delta.where(delta < 0, 0)
 
-# Luo asiakas
-client = Client(API_KEY, API_SECRET)
+    avg_gain = gain.rolling(window=period, min_periods=period).mean()
+    avg_loss = loss.rolling(window=period, min_periods=period).mean()
 
-def get_price_data(symbol: str, interval='1h', limit=100):
-    """
-    Hakee sulkuhinnat Binance-kaupankäyntiparille.
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
 
-    :param symbol: Esim. 'BTCUSDT'
-    :param interval: Esim. '1h' tai '15m'
-    :param limit: Montako kynttilää haetaan (max 1000)
-    :return: Lista sulkuhinnoista (float)
-    """
-    candles = client.get_klines(symbol=symbol, interval=interval, limit=limit)
-    closes = [float(candle[4]) for candle in candles]
-    return closes
+    return rsi.fillna(0).tolist()
+
+def calculate_ema(prices, window=9):
+    prices = pd.Series(prices)
+    ema = prices.ewm(span=window, adjust=False).mean()
+    return ema.tolist()
