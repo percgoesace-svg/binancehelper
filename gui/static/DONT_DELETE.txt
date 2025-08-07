@@ -1,0 +1,2 @@
+#placeholder
+Tämä tiedosto on vain jotta GitHub tallentaa tämän kansion.
