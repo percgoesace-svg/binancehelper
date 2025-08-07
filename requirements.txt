@@ -3,3 +3,4 @@ uvicorn
 python-binance
 pandas
 jinja2
+python-dotenv
