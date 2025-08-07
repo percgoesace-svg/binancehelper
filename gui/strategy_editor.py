@@ -1,25 +1,16 @@
-# Strategy editor logic
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
-# Yksinkertainen strategiatila (voit tallentaa tiedostoon tai tietokantaan tarvittaessa)
-current_strategy = {"mode": "RSI_EMA"}  # Alkuarvo
+current_strategy = {"mode": "RSI_EMA"}
 
 @router.get("/strategy")
 def get_strategy():
-    """
-    Palauttaa nykyisen strategian.
-    """
     return JSONResponse(content=current_strategy)
 
 @router.post("/strategy")
 async def update_strategy(request: Request):
-    """
-    Päivittää strategian käyttäjän syötteen mukaan.
-    Odottaa JSON-dataa, esim. { "mode": "RSI_ONLY" }
-    """
     data = await request.json()
     mode = data.get("mode")
 

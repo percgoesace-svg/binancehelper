@@ -1,4 +1,3 @@
-# Main bot logic here
 import time
 import random
 from strategy import should_buy, should_sell
@@ -24,7 +23,7 @@ STOP_LOSS = 0.08
 open_positions = {}
 
 def get_balance_usdt():
-    balance = client.get_asset_balance(asset='USDT')
+    balance = client.get_asset_balance(asset='UST')
     return float(balance['free'])
 
 def place_order(symbol, side, quantity):
@@ -67,7 +66,7 @@ def run_bot():
             elif should_sell(closes):
                 print(f"[Signal] {symbol}: Sell signal detected.")
 
-        time.sleep(60 * 5)  # Odota 5 minuuttia ennen seuraavaa kierrosta
+        time.sleep(60 * 5)
 
 if __name__ == "__main__":
     print("🔁 Bot is starting...")

@@ -1,4 +1,3 @@
-# RSI and EMA indicator functions
 import pandas as pd
 import numpy as np
 
