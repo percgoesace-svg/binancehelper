@@ -39,26 +39,27 @@ def place_order(symbol, side, quantity, price=None, note=None):
     # client.create_order(symbol=symbol, side=side, type='MARKET', quantity=quantity)
 
 def check_positions():
+    strat = load_strategy()  # haetaan aina viimeisimmät asetukset
     for symbol in list(open_positions.keys()):
         entry = open_positions[symbol]["entry"]
         qty = open_positions[symbol]["qty"]
         ticker = client.get_symbol_ticker(symbol=symbol)
         price = float(ticker['price'])
         pnl = (price - entry) / entry
+
         if pnl >= TAKE_PROFIT:
-            place_order(symbol, "SELL", qty, price, note=f"TP {TAKE_PROFIT*100:.0f}%")
+            place_order(symbol, "SELL", qty, price, note=f"TP {TAKE_PROFIT*100:.0f}% | {strat}")
             del open_positions[symbol]
         elif pnl <= -STOP_LOSS:
-            place_order(symbol, "SELL", qty, price, note=f"SL {STOP_LOSS*100:.0f}%")
+            place_order(symbol, "SELL", qty, price, note=f"SL {STOP_LOSS*100:.0f}% | {strat}")
             del open_positions[symbol]
 
 def run_bot():
     print("Bot loop running. (Mock orders)")
     while True:
-        # dynaamiset asetukset (voit muuttaa GUI:sta lennossa)
         strat = load_strategy()
-
         check_positions()
+
         balance = get_balance_usdt()
         amount_to_use = balance * USED_USD_PERCENTAGE
 
@@ -79,7 +80,7 @@ def run_bot():
                 place_order(symbol, "BUY", qty, price, note=strat)
                 open_positions[symbol] = {"entry": price, "qty": qty}
             elif should_sell(closes):
-                # Ei avointa positiota: pelkkä signaali
+                # Ei avointa positiota: pelkkä signaali logiin
                 append_trade_log({
                     "ts": int(_t.time()),
                     "side": "SELL_SIGNAL",
@@ -89,6 +90,7 @@ def run_bot():
                     "note": strat
                 })
 
+        # odota 10 minuuttia
         time.sleep(600)
 
 if __name__ == "__main__":
