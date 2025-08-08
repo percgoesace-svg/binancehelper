@@ -3,15 +3,24 @@ import time, time as _t
 from strategy import evaluate_signal
 from utils.binance_api import client
 from utils.state import append_trade_log, load_strategy
+from utils.new_listings import get_newlisting_usdt_pairs          # 🔸 UUSI
+from utils.state import set_trading_pairs                         # 🔸 UUSI
 
-TRADE_SYMBOLS = [
-    "BTCUSDT","ETHUSDT","BNBUSDT","XRPUSDT","SOLUSDT",
-    "ADAUSDT","DOGEUSDT","AVAXUSDT","DOTUSDT","LINKUSDT",
-    "MATICUSDT","TRXUSDT","LTCUSDT","SHIBUSDT","UNIUSDT",
-    "BCHUSDT","ATOMUSDT","XLMUSDT","NEARUSDT","FILUSDT",
-    "ETCUSDT","ICPUSDT","HBARUSDT","VETUSDT","SANDUSDT",
-    "EGLDUSDT","GRTUSDT","AAVEUSDT","MKRUSDT","FTMUSDT"
-]
+# 🔸 Hae 30 uusinta New Listing -paria ja julkaise GUI:lle
+TRADE_SYMBOLS = get_newlisting_usdt_pairs(limit=30)
+if not TRADE_SYMBOLS:
+    # Fallback jos New Listing -sivu ei palauttanut mitään
+    TRADE_SYMBOLS = [
+        "BTCUSDT","ETHUSDT","BNBUSDT","XRPUSDT","SOLUSDT",
+        "ADAUSDT","DOGEUSDT","AVAXUSDT","DOTUSDT","LINKUSDT",
+        "MATICUSDT","TRXUSDT","LTCUSDT","SHIBUSDT","UNIUSDT",
+        "BCHUSDT","ATOMUSDT","XLMUSDT","NEARUSDT","FILUSDT",
+        "ETCUSDT","ICPUSDT","HBARUSDT","VETUSDT","SANDUSDT",
+        "EGLDUSDT","GRTUSDT","AAVEUSDT","MKRUSDT","FTMUSDT"
+    ]
+
+set_trading_pairs(TRADE_SYMBOLS)
+print("Using TRADE_SYMBOLS (newListing):", TRADE_SYMBOLS)
 
 USED_USD_PERCENTAGE = 0.10
 TAKE_PROFIT = 0.05
