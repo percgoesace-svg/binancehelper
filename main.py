@@ -1,6 +1,6 @@
 # main.py
 import time, time as _t
-from strategy import should_buy, should_sell
+from strategy import evaluate_signal
 from utils.binance_api import client
 from utils.state import append_trade_log, load_strategy
 
@@ -35,16 +35,15 @@ def place_order(symbol, side, quantity, price=None, note=None):
         "price": price,
         "note": note,
     })
-    # Oikea tilaus: avaa kun haluat
+    # Tuotantokaupat: poista kommentti ja lisää tarkat parametrit
     # client.create_order(symbol=symbol, side=side, type='MARKET', quantity=quantity)
 
 def check_positions():
-    strat = load_strategy()  # haetaan aina viimeisimmät asetukset
+    strat = load_strategy()  # viimeisimmät asetukset lokimerkintään
     for symbol in list(open_positions.keys()):
         entry = open_positions[symbol]["entry"]
         qty = open_positions[symbol]["qty"]
-        ticker = client.get_symbol_ticker(symbol=symbol)
-        price = float(ticker['price'])
+        price = float(client.get_symbol_ticker(symbol=symbol)['price'])
         pnl = (price - entry) / entry
 
         if pnl >= TAKE_PROFIT:
@@ -73,21 +72,22 @@ def run_bot():
                 continue
 
             price = closes[-1]
-            if should_buy(closes):
+            sig = evaluate_signal(closes, strat=strat)  # ✅ sama logiikka kuin GUI
+            if sig["signal"] == "BUY":
                 qty = round((amount_to_use / price), 5) if price > 0 else 0
-                if qty <= 0: 
+                if qty <= 0:
                     continue
-                place_order(symbol, "BUY", qty, price, note=strat)
+                place_order(symbol, "BUY", qty, price, note=sig)
                 open_positions[symbol] = {"entry": price, "qty": qty}
-            elif should_sell(closes):
-                # Ei avointa positiota: pelkkä signaali logiin
+            elif sig["signal"] == "SELL":
+                # Ei avointa positiota: talletetaan signaali logiin
                 append_trade_log({
                     "ts": int(_t.time()),
                     "side": "SELL_SIGNAL",
                     "symbol": symbol,
                     "qty": 0,
                     "price": price,
-                    "note": strat
+                    "note": sig
                 })
 
         # odota 10 minuuttia
