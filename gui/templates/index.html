@@ -1,32 +1,42 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>RSI Bot Dashboard</title>
-    <script>
-        async function loadData() {
-            const coins = ["BTCUSDT", "ETHUSDT", "BNBUSDT"];
-            const container = document.getElementById("data");
-            container.innerHTML = "";
-            for (const coin of coins) {
-                const res = await fetch(`/api/data/${coin}`);
-                const data = await res.json();
-                const color = data.signal === "BUY" ? "green" : data.signal === "SELL" ? "red" : "gray";
-                container.innerHTML += `
-                    <div style="margin:10px; border:1px solid #ccc; padding:10px;">
-                        <h3>${data.symbol}</h3>
-                        <p>RSI: ${data.rsi}</p>
-                        <p>EMA9: ${data.ema9}</p>
-                        <p>EMA20: ${data.ema20}</p>
-                        <p style="color:${color}">Signal: ${data.signal}</p>
-                    </div>
-                `;
-            }
+<script>
+  const COINS = ["BTCUSDT","ETHUSDT","BNBUSDT"]; // laajenna halutessa
+
+  async function loadAll(){
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    for (const s of COINS){
+      try {
+        const r = await fetch('/api/data/' + s, { cache: 'no-store' });
+        const d = await r.json();
+
+        if (d.error || d.rsi === undefined || d.rsi === null) {
+          grid.innerHTML += `
+            <div class="card sig-hold">
+              <h3>${d.symbol || s}</h3>
+              <div><b>Data unavailable</b></div>
+              ${d.error ? `<small>Error: ${d.error}</small>` : `<small>Waiting for data...</small>`}
+            </div>`;
+          continue;
         }
-        window.onload = loadData;
-    </script>
-</head>
-<body>
-    <h1>RSI Bot Dashboard</h1>
-    <div id="data"></div>
-</body>
-</html>
+
+        const cls = d.signal === 'BUY' ? 'sig-buy' : d.signal === 'SELL' ? 'sig-sell' : 'sig-hold';
+        grid.innerHTML += `
+          <div class="card ${cls}">
+            <h3>${d.symbol}</h3>
+            <div>RSI: <b>${d.rsi}</b></div>
+            <div>EMA9: <b>${d.ema9}</b></div>
+            <div>EMA20: <b>${d.ema20}</b></div>
+            <small>Signal: ${d.signal}</small>
+          </div>`;
+      } catch (e) {
+        grid.innerHTML += `
+          <div class="card sig-hold">
+            <h3>${s}</h3>
+            <div><b>Request failed</b></div>
+            <small>${String(e)}</small>
+          </div>`;
+      }
+    }
+  }
+  window.onload = () => { loadAll(); setInterval(loadAll, 20000); };
+</script>
