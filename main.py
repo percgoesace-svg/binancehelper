@@ -1,5 +1,4 @@
 import time
-import random
 from strategy import should_buy, should_sell
 from utils.binance_api import client
 from dotenv import load_dotenv
@@ -23,8 +22,8 @@ STOP_LOSS = 0.08
 open_positions = {}
 
 def get_balance_usdt():
-    balance = client.get_asset_balance(asset='UST')
-    return float(balance['free'])
+    balance = client.get_asset_balance(asset="USDT")
+    return float(balance["free"])
 
 def place_order(symbol, side, quantity):
     print(f"[ORDER] {side} {symbol} x {quantity}")
