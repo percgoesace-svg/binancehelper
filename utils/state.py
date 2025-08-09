@@ -3,7 +3,7 @@ import json, threading
 from pathlib import Path
 from typing import List, Dict, Any
 
-# 👉 aina repojuuri /app eikä sattumavarainen cwd
+# Use absolute repo root to avoid CWD issues in Railway
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -14,8 +14,9 @@ TRADING_PAIRS_FILE = DATA_DIR / "trading_pairs.json"
 
 _lock = threading.Lock()
 
-DEFAULT_STRATEGY: Dict[str, Any] = {"mode":"RSI_EMA","rsi_buy":37,"rsi_sell":70}
+DEFAULT_STRATEGY: Dict[str, Any] = {"mode": "RSI_EMA", "rsi_buy": 37, "rsi_sell": 70}
 
+# --- Strategy ---
 def load_strategy() -> Dict[str, Any]:
     with _lock:
         if STRATEGY_FILE.exists():
@@ -34,6 +35,7 @@ def save_strategy(s: Dict[str, Any]) -> None:
     with _lock:
         STRATEGY_FILE.write_text(json.dumps(s))
 
+# --- Trades log ---
 def append_trade_log(entry: Dict[str, Any]) -> None:
     with _lock:
         with TRADES_LOG.open("a", encoding="utf-8") as f:
@@ -44,12 +46,15 @@ def read_trade_logs(limit: int = 100):
         return []
     with _lock:
         lines = TRADES_LOG.read_text(encoding="utf-8").splitlines()[-limit:]
-    out=[]
+    out = []
     for ln in lines:
-        try: out.append(json.loads(ln))
-        except Exception: pass
+        try:
+            out.append(json.loads(ln))
+        except Exception:
+            pass
     return out
 
+# --- Trading pairs state ---
 def set_trading_pairs(pairs: List[str]) -> None:
     with _lock:
         TRADING_PAIRS_FILE.write_text(json.dumps({"pairs": pairs}))
@@ -63,5 +68,4 @@ def get_trading_pairs() -> List[str]:
         return [str(x) for x in pairs] if isinstance(pairs, list) else []
     except Exception:
         return []
-
 

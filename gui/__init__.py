@@ -1,5 +1,1 @@
-#from .main import app
-#
-#__all__ = ["app"]
-#
-#
+# Package init for gui. Leave empty — do NOT import app here.

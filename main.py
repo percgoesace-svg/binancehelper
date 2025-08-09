@@ -2,14 +2,20 @@
 import time, time as _t
 from strategy import evaluate_signal
 from utils.binance_api import client
-from utils.state import append_trade_log, load_strategy
-from utils.new_listings import get_newlisting_usdt_pairs          # 🔸 UUSI
-from utils.state import set_trading_pairs                         # 🔸 UUSI
+from utils.state import append_trade_log, load_strategy, get_trading_pairs, set_trading_pairs
+from utils.new_listings import get_newlisting_usdt_pairs
 
-# 🔸 Hae 30 uusinta New Listing -paria ja julkaise GUI:lle
-TRADE_SYMBOLS = get_newlisting_usdt_pairs(limit=30)
+# Resolve trading pairs:
+# 1) try state (if GUI fetched first)
+# 2) else fetch from Binance CMS (New Listings)
+# 3) else fallback static list
+TRADE_SYMBOLS = get_trading_pairs() or []
 if not TRADE_SYMBOLS:
-    # Fallback jos New Listing -sivu ei palauttanut mitään
+    try:
+        TRADE_SYMBOLS = get_newlisting_usdt_pairs(limit=30) or []
+    except Exception:
+        TRADE_SYMBOLS = []
+if not TRADE_SYMBOLS:
     TRADE_SYMBOLS = [
         "BTCUSDT","ETHUSDT","BNBUSDT","XRPUSDT","SOLUSDT",
         "ADAUSDT","DOGEUSDT","AVAXUSDT","DOTUSDT","LINKUSDT",
@@ -19,8 +25,9 @@ if not TRADE_SYMBOLS:
         "EGLDUSDT","GRTUSDT","AAVEUSDT","MKRUSDT","FTMUSDT"
     ]
 
+# publish list for GUI
 set_trading_pairs(TRADE_SYMBOLS)
-print("Using TRADE_SYMBOLS (newListing):", TRADE_SYMBOLS)
+print(f"Using TRADE_SYMBOLS (newListing/fallback): {TRADE_SYMBOLS}")
 
 USED_USD_PERCENTAGE = 0.10
 TAKE_PROFIT = 0.05
@@ -33,7 +40,7 @@ def get_balance_usdt():
     return float(bal['free']) if bal else 0.0
 
 def place_order(symbol, side, quantity, price=None, note=None):
-    # MOCK-tilaus – tulosta ja logita
+    # MOCK order – print and log
     ts = int(_t.time())
     print(f"[ORDER MOCK] {side} {symbol} x {quantity} @ {price or '?'}")
     append_trade_log({
@@ -44,11 +51,11 @@ def place_order(symbol, side, quantity, price=None, note=None):
         "price": price,
         "note": note,
     })
-    # Tuotantokaupat: poista kommentti ja lisää tarkat parametrit
+    # Real trading:
     # client.create_order(symbol=symbol, side=side, type='MARKET', quantity=quantity)
 
 def check_positions():
-    strat = load_strategy()  # viimeisimmät asetukset lokimerkintään
+    strat = load_strategy()  # include current settings in log note
     for symbol in list(open_positions.keys()):
         entry = open_positions[symbol]["entry"]
         qty = open_positions[symbol]["qty"]
@@ -81,7 +88,7 @@ def run_bot():
                 continue
 
             price = closes[-1]
-            sig = evaluate_signal(closes, strat=strat)  # ✅ sama logiikka kuin GUI
+            sig = evaluate_signal(closes, strat=strat)
             if sig["signal"] == "BUY":
                 qty = round((amount_to_use / price), 5) if price > 0 else 0
                 if qty <= 0:
@@ -89,7 +96,7 @@ def run_bot():
                 place_order(symbol, "BUY", qty, price, note=sig)
                 open_positions[symbol] = {"entry": price, "qty": qty}
             elif sig["signal"] == "SELL":
-                # Ei avointa positiota: talletetaan signaali logiin
+                # No open position: record signal only
                 append_trade_log({
                     "ts": int(_t.time()),
                     "side": "SELL_SIGNAL",
@@ -99,7 +106,7 @@ def run_bot():
                     "note": sig
                 })
 
-        # odota 10 minuuttia
+        # 10 minutes
         time.sleep(600)
 
 if __name__ == "__main__":
