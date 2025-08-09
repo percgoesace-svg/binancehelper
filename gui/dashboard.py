@@ -20,18 +20,35 @@ def debug_pairs():
 @router.get("/trading_pairs")
 def trading_pairs():
     """
-    Return bot trading pairs (Now Trading). If state is empty (bot not yet wrote),
-    fetch directly from Binance CMS (New Listings) and persist to state.
+    Always try fresh New Listing pairs first (Binance CMS).
+    If that fails/empty, return state; if empty, return a static fallback.
     """
+    # 1) Fresh from Binance CMS
+    try:
+        fresh = get_newlisting_usdt_pairs(limit=30) or []
+    except Exception:
+        fresh = []
+
+    if fresh:
+        set_trading_pairs(fresh)
+        return {"pairs": fresh}
+
+    # 2) Existing state
     pairs = get_trading_pairs() or []
-    if not pairs:
-        try:
-            pairs = get_newlisting_usdt_pairs(limit=30) or []
-        except Exception:
-            pairs = []
-        if pairs:
-            set_trading_pairs(pairs)
-    return {"pairs": pairs}
+    if pairs:
+        return {"pairs": pairs}
+
+    # 3) Fallback (never empty)
+    fallback = [
+        "BTCUSDT","ETHUSDT","BNBUSDT","XRPUSDT","SOLUSDT",
+        "ADAUSDT","DOGEUSDT","AVAXUSDT","DOTUSDT","LINKUSDT",
+        "MATICUSDT","TRXUSDT","LTCUSDT","SHIBUSDT","UNIUSDT",
+        "BCHUSDT","ATOMUSDT","XLMUSDT","NEARUSDT","FILUSDT",
+        "ETCUSDT","ICPUSDT","HBARUSDT","VETUSDT","SANDUSDT",
+        "EGLDUSDT","GRTUSDT","AAVEUSDT","MKRUSDT","FTMUSDT"
+    ]
+    set_trading_pairs(fallback)
+    return {"pairs": fallback}
 
 @router.get("/data/{symbol}")
 def get_indicator_data(symbol: str):
@@ -63,4 +80,3 @@ def get_indicator_data(symbol: str):
             "signal": "N/A",
             "error": str(e),
         }
-
