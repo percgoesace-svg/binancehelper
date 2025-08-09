@@ -39,7 +39,7 @@
 
   <div class="wrap">
     <div class="card">
-      <h3>Markets</h3>
+      <h3>Now Trading (30)</h3>
       <div id="grid"></div>
     </div>
     <div class="card">
@@ -49,8 +49,13 @@
   </div>
 
   <script>
-    const COINS = ["BTCUSDT","ETHUSDT","BNBUSDT","XRPUSDT","SOLUSDT","ADAUSDT","DOGEUSDT","AVAXUSDT","DOTUSDT","LINKUSDT","MATICUSDT","TRXUSDT"];
     async function fetchJSON(url, opts){ const r = await fetch(url, opts); return await r.json(); }
+
+    // 🔽 Hae bottiin ladatut parit (newListing → tallennettu stateen)
+    async function loadPairs(){
+      const rsp = await fetchJSON('/api/trading_pairs');
+      return (rsp && Array.isArray(rsp.pairs)) ? rsp.pairs : [];
+    }
 
     async function loadStrategy(){
       const s = await fetchJSON('/api/strategy');
@@ -71,6 +76,13 @@
     async function loadGrid(){
       const grid = document.getElementById('grid');
       grid.innerHTML = '';
+
+      const COINS = await loadPairs(); // 🔴 dynaaminen lista bottiin synkassa
+      if (!COINS.length){
+        grid.innerHTML = '<small>No trading pairs available (yet)</small>';
+        return;
+      }
+
       for(const s of COINS){
         try{
           const d = await fetchJSON('/api/data/'+s);
