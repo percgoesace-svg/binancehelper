@@ -2,18 +2,21 @@ import time
 from strategy import should_buy, should_sell
 from utils.binance_api import client
 from dotenv import load_dotenv
-import os
+from utils.state import get_trading_pairs, set_trading_pairs
+from utils.new_listings import get_newlisting_usdt_pairs
 
 load_dotenv()
 
-TRADE_SYMBOLS = [
-    "BTCUSDT", "ETHUSDT", "BNBUSDT", "XRPUSDT", "SOLUSDT",
-    "ADAUSDT", "DOGEUSDT", "AVAXUSDT", "DOTUSDT", "LINKUSDT",
-    "MATICUSDT", "TRXUSDT", "LTCUSDT", "SHIBUSDT", "UNIUSDT",
-    "BCHUSDT", "ATOMUSDT", "XLMUSDT", "NEARUSDT", "FILUSDT",
-    "ETCUSDT", "ICPUSDT", "HBARUSDT", "VETUSDT", "SANDUSDT",
-    "EGLDUSDT", "GRTUSDT", "AAVEUSDT", "MKRUSDT", "FTMUSDT"
-]
+TRADE_SYMBOLS = get_trading_pairs() or []
+if not TRADE_SYMBOLS:
+    try:
+        TRADE_SYMBOLS = get_newlisting_usdt_pairs(limit=30) or []
+    except Exception:
+        TRADE_SYMBOLS = []
+    if TRADE_SYMBOLS:
+        set_trading_pairs(TRADE_SYMBOLS)
+
+print(f"Using TRADE_SYMBOLS (newListing): {TRADE_SYMBOLS}")
 
 USED_USD_PERCENTAGE = 0.1
 TAKE_PROFIT = 0.05
@@ -21,13 +24,16 @@ STOP_LOSS = 0.08
 
 open_positions = {}
 
+
 def get_balance_usdt():
     balance = client.get_asset_balance(asset="USDT")
     return float(balance["free"])
 
+
 def place_order(symbol, side, quantity):
     print(f"[ORDER] {side} {symbol} x {quantity}")
     # client.create_order(...)
+
 
 def check_positions():
     for symbol in list(open_positions):
@@ -45,6 +51,7 @@ def check_positions():
             print(f"[SL HIT] Selling {symbol} with {pnl*100:.2f}%")
             place_order(symbol, "SELL", quantity)
             del open_positions[symbol]
+
 
 def run_bot():
     while True:
@@ -66,6 +73,7 @@ def run_bot():
                 print(f"[Signal] {symbol}: Sell signal detected.")
 
         time.sleep(60 * 5)
+
 
 if __name__ == "__main__":
     print("🔁 Bot is starting...")
