@@ -6,3 +6,4 @@ python-binance
 pandas
 numpy
 python-multipart
+requests
