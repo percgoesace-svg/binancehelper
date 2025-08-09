@@ -1,42 +1,128 @@
-<script>
-  const COINS = ["BTCUSDT","ETHUSDT","BNBUSDT"]; // laajenna halutessa
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="utf-8"/>
+  <title>RSI/EMA Bot Dashboard</title>
+  <style>
+    body { font-family: system-ui, Arial; margin:0; background:#0f1115; color:#eaeaea; }
+    header { background:#1a1f29; padding:16px 20px; display:flex; align-items:center; gap:16px; }
+    select,input,button { padding:8px 10px; border-radius:8px; border:1px solid #384152; background:#0f1115; color:#eaeaea; }
+    button { background:#16a34a; border:none; cursor:pointer; }
+    .wrap { padding:20px; display:grid; grid-template-columns: 2fr 1fr; gap:16px; }
+    .card { background:#151922; border:1px solid #2a3242; border-radius:12px; padding:16px; }
+    #grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap:12px; }
+    .coin { border:1px solid #2a3242; border-radius:12px; padding:12px; background:#0f131b; }
+    .sig-buy { color:#22c55e; font-weight:700; }
+    .sig-sell { color:#ef4444; font-weight:700; }
+    .sig-hold { color:#eab308; font-weight:700; }
+    .logs { max-height: 480px; overflow:auto; font-size: 14px; }
+    .row { border-bottom:1px dashed #2a3242; padding:6px 0; }
+    small { color:#9aa4b2; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>📊 RSI/EMA Bot Dashboard</strong>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <label>Mode:</label>
+      <select id="mode">
+        <option value="RSI_EMA">RSI + EMA</option>
+        <option value="RSI_ONLY">RSI only</option>
+        <option value="EMA_ONLY">EMA only</option>
+      </select>
+      <label>RSI buy:</label><input id="rsi_buy" type="number" step="1" min="1" max="99" value="37"/>
+      <label>RSI sell:</label><input id="rsi_sell" type="number" step="1" min="1" max="99" value="70"/>
+      <button onclick="saveStrategy()">Save</button>
+    </div>
+    <div style="margin-left:auto;"><a href="/login" style="color:#9aa4b2;">Logout</a></div>
+  </header>
 
-  async function loadAll(){
-    const grid = document.getElementById('grid');
-    grid.innerHTML = '';
-    for (const s of COINS){
-      try {
-        const r = await fetch('/api/data/' + s, { cache: 'no-store' });
-        const d = await r.json();
+  <div class="wrap">
+    <div class="card">
+      <h3>Now Trading (30)</h3>
+      <div id="grid"></div>
+    </div>
+    <div class="card">
+      <h3>Trade logs</h3>
+      <div id="logs" class="logs"></div>
+    </div>
+  </div>
 
-        if (d.error || d.rsi === undefined || d.rsi === null) {
+  <script>
+    async function fetchJSON(url, opts){ const r = await fetch(url, opts); return await r.json(); }
+
+    // 🔽 Hae bottiin ladatut parit (newListing → tallennettu stateen)
+    async function loadPairs(){
+      const rsp = await fetchJSON('/api/trading_pairs');
+      return (rsp && Array.isArray(rsp.pairs)) ? rsp.pairs : [];
+    }
+
+    async function loadStrategy(){
+      const s = await fetchJSON('/api/strategy');
+      document.getElementById('mode').value = s.mode || 'RSI_EMA';
+      document.getElementById('rsi_buy').value = s.rsi_buy ?? 37;
+      document.getElementById('rsi_sell').value = s.rsi_sell ?? 70;
+    }
+    async function saveStrategy(){
+      const body = {
+        mode: document.getElementById('mode').value,
+        rsi_buy: parseFloat(document.getElementById('rsi_buy').value),
+        rsi_sell: parseFloat(document.getElementById('rsi_sell').value),
+      };
+      await fetchJSON('/api/strategy', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+      alert('Strategy saved');
+    }
+
+    async function loadGrid(){
+      const grid = document.getElementById('grid');
+      grid.innerHTML = '';
+
+      const COINS = await loadPairs(); // 🔴 dynaaminen lista bottiin synkassa
+      if (!COINS.length){
+        grid.innerHTML = '<small>No trading pairs available (yet)</small>';
+        return;
+      }
+
+      for(const s of COINS){
+        try{
+          const d = await fetchJSON('/api/data/'+s);
+          if(d.error || d.rsi === undefined || d.rsi === null){
+            grid.innerHTML += `<div class="coin"><h4>${d.symbol || s}</h4><small>Data unavailable: ${d.error||''}</small></div>`;
+            continue;
+          }
+          const cls = d.signal === 'BUY' ? 'sig-buy' : d.signal === 'SELL' ? 'sig-sell' : 'sig-hold';
           grid.innerHTML += `
-            <div class="card sig-hold">
-              <h3>${d.symbol || s}</h3>
-              <div><b>Data unavailable</b></div>
-              ${d.error ? `<small>Error: ${d.error}</small>` : `<small>Waiting for data...</small>`}
+            <div class="coin">
+              <h4>${d.symbol}</h4>
+              <div>RSI: <b>${d.rsi}</b></div>
+              <div>EMA9: <b>${d.ema9}</b></div>
+              <div>EMA20: <b>${d.ema20}</b></div>
+              <div class="${cls}">Signal: ${d.signal}</div>
             </div>`;
-          continue;
+        }catch(e){
+          grid.innerHTML += `<div class="coin"><h4>${s}</h4><small>Request failed</small></div>`;
         }
-
-        const cls = d.signal === 'BUY' ? 'sig-buy' : d.signal === 'SELL' ? 'sig-sell' : 'sig-hold';
-        grid.innerHTML += `
-          <div class="card ${cls}">
-            <h3>${d.symbol}</h3>
-            <div>RSI: <b>${d.rsi}</b></div>
-            <div>EMA9: <b>${d.ema9}</b></div>
-            <div>EMA20: <b>${d.ema20}</b></div>
-            <small>Signal: ${d.signal}</small>
-          </div>`;
-      } catch (e) {
-        grid.innerHTML += `
-          <div class="card sig-hold">
-            <h3>${s}</h3>
-            <div><b>Request failed</b></div>
-            <small>${String(e)}</small>
-          </div>`;
       }
     }
-  }
-  window.onload = () => { loadAll(); setInterval(loadAll, 20000); };
-</script>
+
+    async function loadLogs(){
+      const box = document.getElementById('logs');
+      const rsp = await fetchJSON('/api/logs?limit=100');
+      box.innerHTML = '';
+      for(const it of (rsp.items||[]).reverse()){
+        const when = new Date((it.ts||0)*1000).toLocaleString();
+        const side = it.side || '?';
+        const price = it.price ?? '?';
+        const qty = it.qty ?? '?';
+        box.innerHTML += `<div class="row"><b>${side}</b> ${it.symbol||'?'} x ${qty} @ ${price} <small>${when}</small><br/><small>${JSON.stringify(it.note||{})}</small></div>`;
+      }
+    }
+
+    async function tick(){
+      await Promise.all([loadGrid(), loadLogs(), loadStrategy()]);
+    }
+    tick();
+    setInterval(tick, 600000); /* 10 minuuttia */
+  </script>
+</body>
+</html>

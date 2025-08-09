@@ -1,21 +1,26 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
+from utils.state import load_strategy, save_strategy, read_trade_logs
 
 router = APIRouter()
 
-current_strategy = {"mode": "RSI_EMA"}
-
 @router.get("/strategy")
 def get_strategy():
-    return JSONResponse(content=current_strategy)
+    return JSONResponse(load_strategy())
 
 @router.post("/strategy")
 async def update_strategy(request: Request):
     data = await request.json()
-    mode = data.get("mode")
+    s = load_strategy()
+    mode = (data.get("mode", s["mode"]) or "RSI_EMA").upper()
+    if mode not in ["RSI_ONLY","EMA_ONLY","RSI_EMA"]:
+        return JSONResponse({"error":"invalid mode"}, status_code=400)
+    s["mode"] = mode
+    if "rsi_buy" in data: s["rsi_buy"] = float(data["rsi_buy"])
+    if "rsi_sell" in data: s["rsi_sell"] = float(data["rsi_sell"])
+    save_strategy(s)
+    return JSONResponse({"ok": True, "strategy": s})
 
-    if mode not in ["RSI_ONLY", "EMA_ONLY", "RSI_EMA"]:
-        return JSONResponse(content={"error": "Invalid strategy mode"}, status_code=400)
-
-    current_strategy["mode"] = mode
-    return JSONResponse(content={"message": f"Strategy updated to {mode}"})
+@router.get("/logs")
+def get_logs(limit: int = 100):
+    return JSONResponse({"items": read_trade_logs(limit=limit)})
