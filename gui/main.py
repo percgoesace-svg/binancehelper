@@ -9,7 +9,6 @@ from starlette.middleware.sessions import SessionMiddleware
 from .dashboard import router as dashboard_router
 from .strategy_editor import router as strategy_router
 
-# --- Unique OpenAPI operation_id generator (estää duplikaattivaroituksia) ---
 def unique_id(route):
     methods = "_".join(sorted(route.methods or []))
     path = route.path.replace("/", "_")
@@ -17,23 +16,21 @@ def unique_id(route):
 
 app = FastAPI(generate_unique_id_function=unique_id)
 
-# --- Session (tarvitaan /login) ---
-# Voi asettaa RAILWAY:ssä muuttujan SESSION_SECRET; muuten fallback.
 SESSION_SECRET = os.getenv("SESSION_SECRET", "change-me-session-secret")
 app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET)
 
-# --- Static + Templates ---
 app.mount("/static", StaticFiles(directory="gui/static"), name="static")
 templates = Jinja2Templates(directory="gui/templates")
 
-# --- Routers (liitä vain kerran) ---
 app.include_router(dashboard_router, prefix="/api", tags=["dashboard"])
 app.include_router(strategy_router,  prefix="/api", tags=["strategy"])
 
-# --- Auth config ---
 PASSWORD = os.getenv("DASHBOARD", os.getenv("DASHBOARD_PASSWORD", "admin"))
 
-# --- Routes ---
+@app.get("/health")
+def health():
+    return {"ok": True}
+
 @app.get("/", response_class=HTMLResponse)
 def root():
     return RedirectResponse(url="/dashboard", status_code=302)
