@@ -51,10 +51,24 @@
   <script>
     async function fetchJSON(url, opts){ const r = await fetch(url, opts); return await r.json(); }
 
-    // 🔽 Hae bottiin ladatut parit (newListing → tallennettu stateen)
+    // 🔽 Hae bottiin ladatut parit; jos tyhjä → pakota fallback
     async function loadPairs(){
-      const rsp = await fetchJSON('/api/trading_pairs');
-      return (rsp && Array.isArray(rsp.pairs)) ? rsp.pairs : [];
+      try {
+        let rsp = await fetchJSON('/api/trading_pairs');
+        if (rsp && Array.isArray(rsp.pairs) && rsp.pairs.length) {
+          return rsp.pairs;
+        }
+      } catch (_) {}
+
+      // pakota fallback (ei koskaan tyhjä)
+      try {
+        let rsp2 = await fetchJSON('/api/trading_pairs?force=fallback');
+        if (rsp2 && Array.isArray(rsp2.pairs) && rsp2.pairs.length) {
+          return rsp2.pairs;
+        }
+      } catch (_) {}
+
+      return []; // ei pitäisi enää tapahtua
     }
 
     async function loadStrategy(){
@@ -77,7 +91,7 @@
       const grid = document.getElementById('grid');
       grid.innerHTML = '';
 
-      const COINS = await loadPairs(); // 🔴 dynaaminen lista bottiin synkassa
+      const COINS = await loadPairs();
       if (!COINS.length){
         grid.innerHTML = '<small>No trading pairs available (yet)</small>';
         return;
@@ -126,3 +140,4 @@
   </script>
 </body>
 </html>
+
