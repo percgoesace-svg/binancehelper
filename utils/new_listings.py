@@ -1,4 +1,5 @@
 # utils/new_listings.py
+import os
 import re
 import requests
 from typing import List
@@ -10,7 +11,6 @@ CMS_URLS = [
     "https://www.binance.com/bapi/composite/v1/public/cms/article/list?pageSize=100&pageNo=1&categoryCode=new_crypto_listing",
 ]
 
-# Kovempi UA + Accept parantaa onnistumisastetta palvelussa
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
                   "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -39,7 +39,6 @@ def _extract_tickers_from_titles(titles: List[str]) -> List[str]:
         m = SYMBOL_RE.search(t or "")
         if m:
             out.append(m.group(1))
-    # säilytä järjestys & poista duplikaatit
     seen, uniq = set(), []
     for x in out:
         if x not in seen:
@@ -47,22 +46,28 @@ def _extract_tickers_from_titles(titles: List[str]) -> List[str]:
             uniq.append(x)
     return uniq
 
-def _filter_usdt_spot_pairs(tickers: List[str]) -> List[str]:
+def _filter_spot_pairs_for_quote(tickers: List[str], quote: str) -> List[str]:
     try:
         info = client.get_exchange_info()
         meta = {s["symbol"]: s for s in info.get("symbols", [])}
     except Exception:
         return []
     out = []
+    q = quote.upper()
     for tk in tickers:
-        pair = f"{tk}USDT"
+        pair = f"{tk}{q}"
         s = meta.get(pair)
         if s and s.get("status") == "TRADING" and s.get("isSpotTradingAllowed", True):
             out.append(pair)
     return out
 
-def get_newlisting_usdt_pairs(limit: int = 30) -> List[str]:
+def get_newlisting_pairs(quote: str = "USDT", limit: int = 30) -> List[str]:
+    """Palauttaa uudet listaukset muodossa BASE+QUOTE (esim. USDC)."""
     titles = _fetch_listing_titles()
     tickers = _extract_tickers_from_titles(titles)
-    pairs = _filter_usdt_spot_pairs(tickers)
+    pairs = _filter_spot_pairs_for_quote(tickers, quote)
     return pairs[:limit]
+
+# Yhteensopivuus vanhan nimen kanssa
+def get_newlisting_usdt_pairs(limit: int = 30) -> List[str]:
+    return get_newlisting_pairs("USDT", limit=limit)
