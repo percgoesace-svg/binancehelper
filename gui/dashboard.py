@@ -1,4 +1,5 @@
-from fastapi import APIRouter
+from typing import Optional
+from fastapi import APIRouter, Query
 from utils.binance_api import get_price_data
 from strategy import evaluate_signal
 from utils.state import load_strategy, get_trading_pairs, set_trading_pairs
@@ -6,8 +7,14 @@ from utils.new_listings import get_newlisting_usdt_pairs
 
 router = APIRouter()
 
-@router.get("/debug/pairs")
-def debug_pairs():
+# Piilotetaan debug-reitti /docsista ja annetaan uniikki operation_id
+@router.get(
+    "/debug/pairs",
+    include_in_schema=False,
+    name="debug_pairs_state",
+    operation_id="debug_pairs_v1",
+)
+def debug_pairs_state():
     from utils.state import TRADING_PAIRS_FILE, DATA_DIR
     pairs = get_trading_pairs()
     return {
@@ -17,28 +24,22 @@ def debug_pairs():
         "file_exists": TRADING_PAIRS_FILE.exists(),
     }
 
-@router.get("/trading_pairs")
-def trading_pairs():
+@router.get(
+    "/trading_pairs",
+    tags=["dashboard"],
+    name="trading_pairs_list",
+    operation_id="trading_pairs_v1",
+)
+def trading_pairs_list(force: Optional[str] = Query(default=None)):
     """
-    Always try fresh New Listing pairs first (Binance CMS).
-    If that fails/empty, return state; if empty, return a static fallback.
+    Return trading pairs for Now Trading.
+
+    Priority:
+    1) If force=fallback -> return static fallback immediately (never empty).
+    2) Try fresh Binance CMS (New Listings), persist to state if non-empty.
+    3) Try existing state.
+    4) Static fallback (never empty).
     """
-    # 1) Fresh from Binance CMS
-    try:
-        fresh = get_newlisting_usdt_pairs(limit=30) or []
-    except Exception:
-        fresh = []
-
-    if fresh:
-        set_trading_pairs(fresh)
-        return {"pairs": fresh}
-
-    # 2) Existing state
-    pairs = get_trading_pairs() or []
-    if pairs:
-        return {"pairs": pairs}
-
-    # 3) Fallback (never empty)
     fallback = [
         "BTCUSDT","ETHUSDT","BNBUSDT","XRPUSDT","SOLUSDT",
         "ADAUSDT","DOGEUSDT","AVAXUSDT","DOTUSDT","LINKUSDT",
@@ -47,10 +48,37 @@ def trading_pairs():
         "ETCUSDT","ICPUSDT","HBARUSDT","VETUSDT","SANDUSDT",
         "EGLDUSDT","GRTUSDT","AAVEUSDT","MKRUSDT","FTMUSDT"
     ]
+
+    # 1) Manuaalinen hätäkytkin
+    if force == "fallback":
+        set_trading_pairs(fallback)
+        print("[/trading_pairs] forced fallback -> 30 symbols")
+        return {"pairs": fallback}
+
+    # 2) Tuore lista Binancen CMS:stä
+    try:
+        fresh = get_newlisting_usdt_pairs(limit=30) or []
+    except Exception as e:
+        print(f"[/trading_pairs] CMS fetch failed: {e}")
+        fresh = []
+
+    if fresh:
+        set_trading_pairs(fresh)
+        print(f"[/trading_pairs] CMS ok -> {len(fresh)} symbols")
+        return {"pairs": fresh}
+
+    # 3) Olemassa oleva state
+    pairs = get_trading_pairs() or []
+    if pairs:
+        print(f"[/trading_pairs] state ok -> {len(pairs)} symbols")
+        return {"pairs": pairs}
+
+    # 4) Fallback (ei koskaan tyhjä)
     set_trading_pairs(fallback)
+    print("[/trading_pairs] using static fallback -> 30 symbols")
     return {"pairs": fallback}
 
-@router.get("/data/{symbol}")
+@router.get("/data/{symbol}", tags=["dashboard"], name="indicator_data", operation_id="indicator_data_v1")
 def get_indicator_data(symbol: str):
     """
     Return RSI/EMA9/EMA20 + signal using the same evaluate_signal logic as the bot.
