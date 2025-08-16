@@ -7,14 +7,14 @@ from utils.new_listings import get_newlisting_usdt_pairs
 
 router = APIRouter()
 
-# Piilotetaan debug-reitti /docsista ja annetaan uniikki operation_id
+# --- DEBUG (piilotettu /docsista) -------------------------------------------
 @router.get(
-    "/debug/pairs",
+    "/_debug/pairs",                 # vaihdettu polku -> vähentää törmäysriskiä
     include_in_schema=False,
-    name="debug_pairs_state",
-    operation_id="debug_pairs_v1",
+    name="debug_pairs_state_v2",     # uniikki nimi
+    operation_id="debug_pairs_v2",   # uniikki operation_id
 )
-def debug_pairs_state():
+def debug_pairs_state_v2():
     from utils.state import TRADING_PAIRS_FILE, DATA_DIR
     pairs = get_trading_pairs()
     return {
@@ -24,13 +24,14 @@ def debug_pairs_state():
         "file_exists": TRADING_PAIRS_FILE.exists(),
     }
 
+# --- TRADING PAIRS -----------------------------------------------------------
 @router.get(
     "/trading_pairs",
     tags=["dashboard"],
-    name="trading_pairs_list",
-    operation_id="trading_pairs_v1",
+    name="trading_pairs_list_v2",     # uniikki nimi
+    operation_id="trading_pairs_v2",  # uniikki operation_id
 )
-def trading_pairs_list(force: Optional[str] = Query(default=None)):
+def trading_pairs_list_v2(force: Optional[str] = Query(default=None)):
     """
     Return trading pairs for Now Trading.
 
@@ -78,8 +79,14 @@ def trading_pairs_list(force: Optional[str] = Query(default=None)):
     print("[/trading_pairs] using static fallback -> 30 symbols")
     return {"pairs": fallback}
 
-@router.get("/data/{symbol}", tags=["dashboard"], name="indicator_data", operation_id="indicator_data_v1")
-def get_indicator_data(symbol: str):
+# --- INDICATOR DATA ----------------------------------------------------------
+@router.get(
+    "/data/{symbol}",
+    tags=["dashboard"],
+    name="indicator_data_v2",          # uniikki nimi
+    operation_id="indicator_data_v2",  # uniikki operation_id
+)
+def get_indicator_data_v2(symbol: str):
     """
     Return RSI/EMA9/EMA20 + signal using the same evaluate_signal logic as the bot.
     """
@@ -108,3 +115,4 @@ def get_indicator_data(symbol: str):
             "signal": "N/A",
             "error": str(e),
         }
+
