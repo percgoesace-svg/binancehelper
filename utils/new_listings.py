@@ -4,18 +4,25 @@ import requests
 from typing import List
 from utils.binance_api import client
 
-# Binance CMS API (New Listings category)
+# Binance CMS API (New Listings -kategoria)
 CMS_URLS = [
     "https://www.binance.com/bapi/composite/v1/public/cms/article/list?pageSize=100&pageNo=1&categoryCode=listing",
     "https://www.binance.com/bapi/composite/v1/public/cms/article/list?pageSize=100&pageNo=1&categoryCode=new_crypto_listing",
 ]
+
+# Kovempi UA + Accept parantaa onnistumisastetta palvelussa
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*",
+}
 
 SYMBOL_RE = re.compile(r"\(([A-Z0-9]{2,15})\)")
 
 def _fetch_listing_titles() -> List[str]:
     for url in CMS_URLS:
         try:
-            r = requests.get(url, timeout=10)
+            r = requests.get(url, headers=HEADERS, timeout=8)
             if r.ok:
                 data = r.json()
                 items = (data.get("data") or {}).get("articles") or []
@@ -32,7 +39,7 @@ def _extract_tickers_from_titles(titles: List[str]) -> List[str]:
         m = SYMBOL_RE.search(t or "")
         if m:
             out.append(m.group(1))
-    # keep order & uniques
+    # säilytä järjestys & poista duplikaatit
     seen, uniq = set(), []
     for x in out:
         if x not in seen:
@@ -59,4 +66,3 @@ def get_newlisting_usdt_pairs(limit: int = 30) -> List[str]:
     tickers = _extract_tickers_from_titles(titles)
     pairs = _filter_usdt_spot_pairs(tickers)
     return pairs[:limit]
-
